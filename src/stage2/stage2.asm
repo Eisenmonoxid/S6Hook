@@ -26,6 +26,9 @@ stage2:
 		cmp byte [hookAllocdFlag], 0
 		jnz .copyPayload
 		
+		mfence
+		clflush [hookBase]
+		
 		push 4h					; R/W
 		push 2000h				; reserve 
 		push hookAllocSize
@@ -40,6 +43,8 @@ stage2:
 		test eax, eax
 		jz .abort
 		
+		mfence
+		clflush [hookBase]
 								; get write permissions for .text
 		push ebp				; ptr to temp val
 		push 40h				; new access: R/W/X
@@ -49,9 +54,9 @@ stage2:
 		call eax				; call VirtualProtect(...)
 		test eax, eax
 		jz .abort
-		
+				
 		mov byte [hookAllocdFlag], 1
-
+		
 .copyPayload:	
 		
 		push ebp				; &tempValue = size of string
@@ -59,6 +64,9 @@ stage2:
 		push ebx
 		call [lua_tolstring]
 		add esp, 0Ch
+		
+		mfence
+		clflush [hookBase]
 		
 		mov esi, eax			; copy source = lua string
 		mov edi, hookBase		; copy destination
@@ -72,7 +80,6 @@ stage2:
 		pop eax					; remove tempValue
 		retn 4
 		
-
 findVirtualProtect:
 		push 0
 		push 'el32'
